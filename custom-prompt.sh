@@ -62,65 +62,63 @@ create_tamshub_prompt() {
     local load_avg
     local mem_usage
     local current_time
-    
+
     # Get dynamic information
     if [ $exit_status -eq 0 ]; then
         status_color="${PROMPT_GREEN}"
     else
         status_color="${PROMPT_RED}"
     fi
-    
+
     git_info=$(get_git_branch)
     load_avg=$(get_load_average)
     mem_usage=$(get_memory_usage)
     current_time=$(get_current_time)
-    
-    # Build the prompt
-    local prompt=""
-    
+
+    # Build the prompt using PS1 format
+    PS1=""
+
     # First line: System info and time
-    prompt+="${PROMPT_GRAY}┌─[${PROMPT_CYAN}${current_time}${PROMPT_GRAY}]─[${PROMPT_YELLOW}Load:${load_avg}${PROMPT_GRAY}]─[${PROMPT_BLUE}Mem:${mem_usage}${PROMPT_GRAY}]"
-    
+    PS1+="${PROMPT_GRAY}┌─[${PROMPT_CYAN}${current_time}${PROMPT_GRAY}]─[${PROMPT_YELLOW}Load:${load_avg}${PROMPT_GRAY}]─[${PROMPT_BLUE}Mem:${mem_usage}${PROMPT_GRAY}]"
+
     # Add git info if available
     if [ -n "$git_info" ]; then
-        prompt+="$git_info"
+        PS1+="$git_info"
     fi
-    
-    prompt+="\n"
-    
+
+    PS1+="\n"
+
     # Second line: User, host, and path
-    prompt+="${PROMPT_GRAY}├─[${PROMPT_CYAN}${PROMPT_BOLD}TamsHub${PROMPT_RESET}${PROMPT_GRAY}]─[${PROMPT_GREEN}\u${PROMPT_GRAY}@${PROMPT_BLUE}\h${PROMPT_GRAY}]─[${PROMPT_YELLOW}\w${PROMPT_GRAY}]\n"
-    
+    PS1+="${PROMPT_GRAY}├─[${PROMPT_CYAN}${PROMPT_BOLD}TamsHub${PROMPT_RESET}${PROMPT_GRAY}]─[${PROMPT_GREEN}\u${PROMPT_GRAY}@${PROMPT_BLUE}\h${PROMPT_GRAY}]─[${PROMPT_YELLOW}\w${PROMPT_GRAY}]\n"
+
     # Third line: Command prompt
-    prompt+="${PROMPT_GRAY}└─${status_color}▶${PROMPT_RESET} "
-    
-    echo "$prompt"
+    PS1+="${PROMPT_GRAY}└─${status_color}▶${PROMPT_RESET} "
 }
 
 # Function to create a simpler single-line prompt for narrow terminals
 create_compact_prompt() {
     local exit_status=$?
     local status_color
-    
+
     if [ $exit_status -eq 0 ]; then
         status_color="${PROMPT_GREEN}"
     else
         status_color="${PROMPT_RED}"
     fi
-    
-    echo "${PROMPT_CYAN}[${PROMPT_BOLD}TamsHub${PROMPT_RESET}${PROMPT_CYAN}]${PROMPT_GRAY}─${PROMPT_GREEN}\u${PROMPT_GRAY}@${PROMPT_BLUE}\h${PROMPT_GRAY}:${PROMPT_YELLOW}\w${status_color}▶${PROMPT_RESET} "
+
+    PS1="${PROMPT_CYAN}[${PROMPT_BOLD}TamsHub${PROMPT_RESET}${PROMPT_CYAN}]${PROMPT_GRAY}─${PROMPT_GREEN}\u${PROMPT_GRAY}@${PROMPT_BLUE}\h${PROMPT_GRAY}:${PROMPT_YELLOW}\w${status_color}▶${PROMPT_RESET} "
 }
 
 # Function to set the appropriate prompt based on terminal width
 set_dynamic_prompt() {
     local term_width=$(tput cols 2>/dev/null || echo 80)
-    
+
     if [ "$term_width" -lt 100 ]; then
         # Use compact prompt for narrow terminals
-        PS1=$(create_compact_prompt)
+        create_compact_prompt
     else
         # Use full multi-line prompt for wider terminals
-        PS1=$(create_tamshub_prompt)
+        create_tamshub_prompt
     fi
 }
 
@@ -163,10 +161,11 @@ setup_tamshub_prompt() {
     alias tamshub-status='systemctl status --no-pager'
     alias tamshub-logs='journalctl -f'
     
-    # Welcome message (only for interactive shells)
-    if [[ $- == *i* ]]; then
-        echo -e "${PROMPT_CYAN}${PROMPT_BOLD}TamsHub VPS${PROMPT_RESET} ${PROMPT_GRAY}Professional Command Environment${PROMPT_RESET}"
-        echo -e "${PROMPT_GRAY}Type ${PROMPT_YELLOW}'sysinfo'${PROMPT_GRAY} to view system information${PROMPT_RESET}"
+    # Welcome message (only for interactive shells and not in MOTD context)
+    if [[ $- == *i* ]] && [[ -z "$MOTD_SHOWN" ]]; then
+        echo -e "\033[0;36m\033[1mTamsHub VPS\033[0m \033[0;37mProfessional Command Environment\033[0m"
+        echo -e "\033[0;37mType \033[1;33m'sysinfo'\033[0;37m to view system information\033[0m"
+        export MOTD_SHOWN=1
     fi
 }
 

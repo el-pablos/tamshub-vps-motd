@@ -108,6 +108,32 @@ display_info_with_bar() {
     printf "\n"
 }
 
+# Function to create mini progress bar for table layout
+create_mini_progress_bar() {
+    local percentage="$1"
+    local width=10
+
+    # Convert percentage to integer if it's a decimal
+    local percentage_int=$(echo "$percentage" | cut -d'.' -f1)
+    if [ -z "$percentage_int" ] || [ "$percentage_int" = "" ]; then
+        percentage_int=0
+    fi
+
+    local filled=$((percentage_int * width / 100))
+    local empty=$((width - filled))
+
+    printf "["
+    # Filled portion
+    for ((i=0; i<filled; i++)); do
+        printf "${GREEN}█${NC}"
+    done
+    # Empty portion
+    for ((i=0; i<empty; i++)); do
+        printf "${GRAY}░${NC}"
+    done
+    printf "]"
+}
+
 # Function to get CPU information
 get_cpu_info() {
     local cpu_model=$(grep "model name" /proc/cpuinfo | head -1 | cut -d: -f2 | sed 's/^ *//')
@@ -288,70 +314,55 @@ display_system_info() {
     IFS='|' read -r load_avg cpu_usage processes uptime_info disk_io net_stats <<< "$(get_performance_metrics)"
     IFS='|' read -r kernel_version os_version virtualization security_features <<< "$(get_system_details)"
     
-    # Hardware Specifications Section
-    section_header "HARDWARE SPECIFICATIONS"
+    # Compact System Information Tables
+    section_header "SYSTEM SPECIFICATIONS"
     printf "\n"
-    display_info "CPU Model" "$cpu_model" "$GREEN"
-    display_info "CPU Architecture" "$cpu_arch" "$WHITE"
-    display_info "CPU Cores/Threads" "${cpu_cores} cores / ${cpu_threads} threads" "$YELLOW"
-    display_info "CPU Frequency" "$cpu_freq" "$CYAN"
-    if [ -n "$cpu_governor" ]; then
-        display_info "CPU Governor" "$cpu_governor" "$GRAY"
-    fi
-    printf "\n"
-    display_info "Total RAM" "$mem_total" "$GREEN"
 
-    # Extract percentage number for progress bar
+    # Hardware Table
+    printf "${CYAN}${BOLD}HARDWARE${NC}\n"
+    printf "${GRAY}┌─────────────────────────────────────────────────────────────────────────────┐${NC}\n"
+    printf "${GRAY}│${NC} ${GREEN}CPU:${NC} %-35s ${YELLOW}Cores:${NC} %-8s ${CYAN}Freq:${NC} %-10s ${GRAY}│${NC}\n" \
+           "$(echo "$cpu_model" | cut -c1-35)" "${cpu_cores}/${cpu_threads}" "$cpu_freq"
+
+    # Extract percentage numbers for progress bars
     local mem_percent_num=$(echo "$mem_usage_percent" | sed 's/%//')
-    display_info_with_bar "Memory Usage" "${mem_used}" "$mem_percent_num" "$YELLOW"
-    display_info "Available Memory" "$mem_available" "$CYAN"
-    display_info "Cached Memory" "$mem_cached" "$GRAY"
-    printf "\n"
-    display_info "Storage Type" "$storage_type" "$GREEN"
-    display_info "Total Storage" "$storage_total" "$WHITE"
-
-    # Extract percentage number for progress bar
     local storage_percent_num=$(echo "$storage_percent" | sed 's/%//')
-    display_info_with_bar "Used Storage" "${storage_used}" "$storage_percent_num" "$YELLOW"
-    display_info "Available Storage" "$storage_available" "$CYAN"
+
+    printf "${GRAY}│${NC} ${GREEN}RAM:${NC} %-12s ${YELLOW}Used:${NC} %-12s " "$mem_total" "${mem_used} (${mem_usage_percent})"
+    create_mini_progress_bar "$mem_percent_num"
+    printf " ${GRAY}│${NC}\n"
+
+    printf "${GRAY}│${NC} ${GREEN}Storage:${NC} %-8s ${YELLOW}Used:${NC} %-12s " "${storage_type} ${storage_total}" "${storage_used} (${storage_percent})"
+    create_mini_progress_bar "$storage_percent_num"
+    printf " ${GRAY}│${NC}\n"
+
+    printf "${GRAY}│${NC} ${GREEN}Network:${NC} %-12s ${YELLOW}IP:${NC} %-20s ${CYAN}Speed:${NC} %-10s ${GRAY}│${NC}\n" \
+           "$net_interface" "$net_ip" "$net_speed"
+    printf "${GRAY}└─────────────────────────────────────────────────────────────────────────────┘${NC}\n"
     printf "\n"
-    display_info "Network Interface" "$net_interface" "$WHITE"
-    display_info "IP Address" "$net_ip" "$GREEN"
-    display_info "Interface Speed" "$net_speed" "$CYAN"
-    printf "\n"
-    
-    create_separator
-    
-    # Performance Metrics Section
-    section_header "PERFORMANCE METRICS"
-    printf "\n"
-    display_info "System Uptime" "$uptime_info" "$GREEN"
-    display_info "Load Average" "$load_avg" "$YELLOW"
-    display_info "CPU Usage" "${cpu_usage}%" "$CYAN"
-    display_info "Active Processes" "$processes" "$WHITE"
-    if [ "$disk_io" != "N/A" ]; then
-        display_info "Disk I/O" "$disk_io" "$MAGENTA"
-    fi
+
+    # Performance & System Table
+    printf "${CYAN}${BOLD}PERFORMANCE & SYSTEM${NC}\n"
+    printf "${GRAY}┌─────────────────────────────────────────────────────────────────────────────┐${NC}\n"
+    printf "${GRAY}│${NC} ${GREEN}Uptime:${NC} %-20s ${YELLOW}Load:${NC} %-15s ${CYAN}CPU:${NC} %-8s ${GRAY}│${NC}\n" \
+           "$uptime_info" "$load_avg" "${cpu_usage}%"
+    printf "${GRAY}│${NC} ${GREEN}Processes:${NC} %-12s ${YELLOW}OS:${NC} %-25s ${CYAN}Kernel:${NC} %-10s ${GRAY}│${NC}\n" \
+           "$processes" "$(echo "$os_version" | cut -c1-25)" "$(echo "$kernel_version" | cut -c1-10)"
+
     if [ "$net_stats" != "N/A" ]; then
-        display_info "Network Stats" "$net_stats" "$BLUE"
+        printf "${GRAY}│${NC} ${GREEN}Network:${NC} %-25s ${YELLOW}Virt:${NC} %-15s ${CYAN}Security:${NC} %-8s ${GRAY}│${NC}\n" \
+               "$net_stats" "$virtualization" "$security_features"
+    else
+        printf "${GRAY}│${NC} ${GREEN}Virtualization:${NC} %-15s ${YELLOW}Security:${NC} %-25s ${GRAY}│${NC}\n" \
+               "$virtualization" "$security_features"
     fi
-    printf "\n"
-    
-    create_separator
-    
-    # System Information Section
-    section_header "SYSTEM INFORMATION"
-    printf "\n"
-    display_info "Operating System" "$os_version" "$GREEN"
-    display_info "Kernel Version" "$kernel_version" "$WHITE"
-    display_info "Virtualization" "$virtualization" "$CYAN"
-    display_info "Security Features" "$security_features" "$YELLOW"
+    printf "${GRAY}└─────────────────────────────────────────────────────────────────────────────┘${NC}\n"
     printf "\n"
     
     create_separator
     
     # Footer
-    printf "${GRAY}${BOLD}Last updated: $(date '+%Y-%m-%d %H:%M:%S %Z')${NC}\n"
+    printf "${GRAY}${BOLD}Last updated: $(TZ='Asia/Jakarta' date '+%Y-%m-%d %H:%M:%S %Z')${NC}\n"
     printf "${CYAN}${BOLD}Welcome to your TamsHub VPS high-performance environment!${NC}\n\n"
 }
 

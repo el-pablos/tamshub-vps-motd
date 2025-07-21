@@ -49,9 +49,9 @@ get_status_color() {
     fi
 }
 
-# Function to get current time in HH:MM format
+# Function to get current time in HH:MM format (Asia/Jakarta timezone)
 get_current_time() {
-    date '+%H:%M'
+    TZ='Asia/Jakarta' date '+%H:%M'
 }
 
 # Function to create the main TamsHub VPS prompt
